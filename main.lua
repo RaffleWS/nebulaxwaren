@@ -1,3 +1,57 @@
+-- ==================================================
+-- MOBILE FULL SUPPORT FIX (27 BARIS AJA BRO)
+-- Taruh di paling atas script sebelum load WindUI
+-- ==================================================
+repeat task.wait() until game:IsLoaded()
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
+if isMobile then
+    -- Force mobile mode WindUI
+    getgenv().WindUIMobile = true
+    
+    -- Auto resize + touch friendly
+    spawn(function()
+        repeat task.wait() until WindUI
+        if WindUI and WindUI.CreateWindow then
+            -- Override default size biar pas di HP
+            local oldCreate = WindUI.CreateWindow
+            WindUI.CreateWindow = function(args)
+                args.Size = args.Size or UDim2.fromOffset(480, 620)
+                args.MinSize = Vector2.new(420, 560)
+                args.MaxSize = Vector2.new(600, 800)
+                args.Resizable = true
+                args.Draggable = true
+                args.SideBarWidth = 160
+                args.Transparent = false
+                args.BackgroundImageTransparency = 0.9
+                return oldCreate(args)
+            end
+        end
+    end)
+    
+    -- Fix open button biar bisa di-tap di mobile
+    spawn(function()
+        task.wait(3)
+        if Window then
+            Window:EditOpenButton({
+                Title = "NebulaWare",
+                Icon = "zap",
+                CornerRadius = UDim.new(0,20),
+                StrokeThickness = 4,
+                Color = ColorSequence.new(Color3.fromHex("#00ff88"), Color3.fromHex("#00ffff")),
+                OnlyMobile = false,
+                Enabled = true,
+                Draggable = true,
+                Size = UDim2.fromOffset(140, 140), -- besar biar gampang tap
+                Position = UDim2.new(0.02, 0, 0.75, 0), -- pojok kiri bawah
+            })
+        end
+    end)
+end
 
 local Version = "1.6.53"
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/" .. Version .. "/main.lua"))()
@@ -2136,4 +2190,5 @@ Tab:Dropdown({
         })
     end
 })
+
 
