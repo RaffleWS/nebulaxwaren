@@ -1,4 +1,46 @@
+-- LOADING GUI MINI (taro di baris paling atas script)
+repeat task.wait() until game.Players.LocalPlayer
 
+local CoreGui = game:GetService("CoreGui")
+local sg = Instance.new("ScreenGui", CoreGui)
+local frame = Instance.new("Frame", sg)
+local text = Instance.new("TextLabel", frame)
+local corner = Instance.new("UICorner", frame)
+
+sg.Name = "MiniLoading"
+frame.Size = UDim2.new(0, 220, 0, 60)
+frame.Position = UDim2.new(0.5, -110, -0.15, 0) -- agak atas biar ga ganggu
+frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+frame.BorderSizePixel = 0
+frame.BackgroundTransparency = 0.1
+
+corner.CornerRadius = UDim.new(0, 12)
+
+text.Size = UDim2.new(1,0,1,0)
+text.BackgroundTransparency = 1
+text.Text = "Loading script... 0s"
+text.TextColor3 = Color3.fromRGB(0, 255, 150)
+text.Font = Enum.Font.GothamBold
+text.TextSize = 18
+
+-- Countdown + auto destroy
+spawn(function()
+    local waitTime = math.random(8, 14)
+    for i = 1, waitTime do
+        text.Text = "Loading script... " .. (waitTime - i + 1) .. "s"
+        task.wait(1)
+    end
+    -- Fade out + destroy
+    for i = 1, 10 do
+        frame.BackgroundTransparency = frame.BackgroundTransparency + 0.1
+        text.TextTransparency = text.TextTransparency + 0.1
+        task.wait(0.05)
+    end
+    sg:Destroy()
+end)
+
+task.wait(math.random(8, 14)) -- delay beneran
+-- SELESAI! LANJUT SEMUA KODE UI & FITUR DI BAWAH INI BRO
 
 local Version = "1.6.53"
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/" .. Version .. "/main.lua"))()
@@ -32,7 +74,7 @@ local Window = WindUI:CreateWindow({
     -- ↓ Optional. You can remove it.
     User = {
         Enabled = true,
-        Anonymous = flase,
+        Anonymous = false,
         Callback = function()
             print("clicked")
         end,
@@ -96,7 +138,7 @@ Tab:Paragraph({
                 game:GetService("StarterGui"):SetCore("SendNotification", {
                     Title = "✅ Discord Link Copied!",
                     Text = link,
-                    Icon = "webhook",
+                    Icon = "rbxassetid://6031075938",
                     Duration = 5
                 })
                 
@@ -136,6 +178,9 @@ local Button = Tab:Button({
 
 -- PASTE INI DI BAWAH TAB YANG LU MAU (misal MainTab atau MiscTab)
 
+Nebula.NoClipEnabled = false
+Nebula.NoClipConn = nil
+
 local Toggle = Tab:Toggle({
     Title = "NO CLIP",
     Desc = "TOGGLE NO CLIP ON/OFF",
@@ -145,40 +190,44 @@ local Toggle = Tab:Toggle({
     Callback = function(state)
         Nebula.NoClipEnabled = state
         local player = game.Players.LocalPlayer
-        local noclipConnection = Nebula.NoClipConn
 
-        if state then
-            print("NO CLIP NYALA - BISA NEMBUS TEMBOK!")
-            
-            noclipConnection = game:GetService("RunService").Stepped:Connect(function()
-                if player.Character and Nebula.NoClipEnabled then
-                    for _, part in pairs(player.Character:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.CanCollide = false
-                        end
-                    end
-                end
-            end)
-            
-            Nebula.NoClipConn = noclipConnection
-            
-        else
-            print("NO CLIP MATI - Kembali normal")
+        -- MATIKAN NOCLIP
+        if not state then
+            print("NOCLIP OFF - COLLISION NORMAL")
+
+            -- Putuskan koneksi
             if Nebula.NoClipConn then
                 Nebula.NoClipConn:Disconnect()
                 Nebula.NoClipConn = nil
             end
+
+            -- Kembalikan CanCollide = true
+            if player.Character then
+                for _, part in pairs(player.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                    end
+                end
+            end
+
+            return
         end
+
+        -- HIDUPKAN NOCLIP
+        print("NOCLIP ON - Menembus aktif!")
+
+        Nebula.NoClipConn = game:GetService("RunService").Stepped:Connect(function()
+            if player.Character and Nebula.NoClipEnabled then
+                for _, part in pairs(player.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
     end
 })
 
--- Auto aktif lagi pas respawn
-game.Players.LocalPlayer.CharacterAdded:Connect(function()
-    if Nebula.NoClipEnabled then
-        task.wait(0.5)
-        Toggle.Value = true
-    end
-end)
 
 local Button = Tab:Button({
     Title = "Infinite Yield",
@@ -227,77 +276,64 @@ game.Players.LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
--- VARIABEL & FUNGSI INI HARUS DITULIS SEBELUM SLIDER (di atas local Slider = ...)
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-local function updateSpeed(speed)
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("Humanoid") then
-        char.Humanoid.WalkSpeed = speed
-    end
-end
-
-local Slider = Tab:Slider({
+local SpeedSlider = Tab:Slider({
     Title = "Speed Hack",
-    Desc = "SPEEDING LIKE A SONIC",
+    Desc = "WalkSpeed Multiplier (Aman bro)",
     Step = 1,
-    Value = { Min = 16, Max = 500, Default = 16 },
+    Value = {
+        Min = 16,
+        Max = 300,
+        Default = 16, -- default walkspeed biar ga keciduk pas join
+    },
     Callback = function(value)
-        Nebula.CurrentSpeed = value
-        local char = game.Players.LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = value
-        end
-        print("Speed Hack: " .. value)
+        if not game.Players.LocalPlayer.Character or not game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then return end
+        
+        local humanoid = game.Players.LocalPlayer.Character.Humanoid
+        
+        -- Anti-detect trick: jangan langsung set WalkSpeed mentah
+        -- Pake Change + random kecil biar ga keliatan modify langsung
+        humanoid.WalkSpeed = 16
+        task.wait()
+        humanoid.WalkSpeed = value + math.random(-2, 2)
+        
+        -- Spoof buat anti-cheat yang cek perubahan langsung
+        task.spawn(function()
+            while task.wait(1.5) and humanoid.WalkSpeed > 50 do
+                humanoid.WalkSpeed = humanoid.WalkSpeed + math.random(-3, 3)
+            end
+        end)
     end
 })
 
--- Auto restore pas respawn
-game.Players.LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.1)
-    if Nebula.CurrentSpeed then
-        local char = game.Players.LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = Nebula.CurrentSpeed
-        end
-    end
-end)
 
-
-local Slider = Tab:Slider({
-    Title = "Jump Power Hack",
-    Desc = "Normal = 50 | God Mode = 200-300",
+local JumpSlider = Tab:Slider({
+    Title = "Jump Boost",
+    Desc = "JumpPower / JumpHeight (Undetected)",
     Step = 1,
-    Value = { Min = 50, Max = 500, Default = 50 },
+    Value = {
+        Min = 50,
+        Max = 250,
+        Default = 50, -- default roblox jump power
+    },
     Callback = function(value)
-        Nebula.CurrentJumpPower = value
-        local char = game.Players.LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.JumpPower = value
-            char.Humanoid.JumpHeight = value / 3.57
-        end
-
-        WindUI:Notify({
-            Title = "Jump Power",
-            Content = "Set ke " .. value,
-            Duration = 3
-        })
+        if not game.Players.LocalPlayer.Character or not game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then return end
+        
+        local humanoid = game.Players.LocalPlayer.Character.Humanoid
+        humanoid.UseJumpPower = true -- penting banget biar ga keciduk pake JumpHeight
+        
+        -- Smooth + anti-detect
+        humanoid.JumpPower = 50
+        task.wait()
+        humanoid.JumpPower = value + math.random(-5, 5)
+        
+        -- Randomize sedikit tiap beberapa detik biar natural
+        task.spawn(function()
+            while task.wait(2) and humanoid.JumpPower > 80 do
+                humanoid.JumpPower = humanoid.JumpPower + math.random(-8, 8)
+            end
+        end)
     end
 })
-
--- Auto restore pas respawn
-game.Players.LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.3)
-    if Nebula.CurrentJumpPower then
-        local char = game.Players.LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.JumpPower = Nebula.CurrentJumpPower
-            char.Humanoid.JumpHeight = Nebula.CurrentJumpPower / 3.57
-        end
-    end
-end)
-
 
 local Button = Tab:Button({
     Title = "REMOTE SPY",
@@ -343,165 +379,192 @@ local Tab = Window:Tab({
     Locked = false,
 })
 
--- VARIABEL & FUNGSI INI HARUS DITULIS SEBELUM TOGGLE (di atas local Toggle = ...)
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-
-local ESPObjects = {}
-local ESPEnabled = false
-local heartbeatConnection = nil
-local playerAddedConnection = nil
-local playerRemovingConnection = nil
-
-local function createESP(plr)
-    if plr == LocalPlayer or ESPObjects[plr] or not ESPEnabled then return end
-    
-    local char = plr.Character
-    if not char then return end
-    
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    
-    -- Highlight (glow orange)
-    local highlight = Instance.new("Highlight")
-    highlight.Parent = char
-    highlight.Adornee = char
-    highlight.FillColor = Color3.fromRGB(255, 85, 0)
-    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-    highlight.FillTransparency = 0.4
-    highlight.OutlineTransparency = 0
-    
-    -- BillboardGui untuk nama + distance
-    local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Name = "ESP"
-    billboardGui.Parent = hrp
-    billboardGui.Size = UDim2.new(0, 250, 0, 60)
-    billboardGui.StudsOffset = Vector3.new(0, 3, 0)
-    billboardGui.MaxDistance = math.huge
-    billboardGui.LightInfluence = 0
-    billboardGui.AlwaysOnTop = true
-    
-    -- Nama username
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Parent = billboardGui
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
-    nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.Text = plr.Name
-    nameLabel.TextColor3 = Color3.new(255, 255, 255)
-    nameLabel.TextStrokeTransparency = 0
-    nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-    nameLabel.TextScaled = true
-    
-    -- Distance
-    local distanceLabel = Instance.new("TextLabel")
-    distanceLabel.Parent = billboardGui
-    distanceLabel.BackgroundTransparency = 1
-    distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
-    distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
-    distanceLabel.Font = Enum.Font.GothamSemibold
-    distanceLabel.Text = "0 studs"
-    distanceLabel.TextColor3 = Color3.new(0, 255, 0)
-    distanceLabel.TextStrokeTransparency = 0
-    distanceLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-    distanceLabel.TextScaled = true
-    
-    ESPObjects[plr] = {
-        Highlight = highlight,
-        BillboardGui = billboardGui,
-        NameLabel = nameLabel,
-        DistanceLabel = distanceLabel
-    }
-end
-
-local function removeESP(plr)
-    local esp = ESPObjects[plr]
-    if esp then
-        esp.Highlight:Destroy()
-        esp.BillboardGui:Destroy()
-        ESPObjects[plr] = nil
-    end
-end
-
-local Toggle = Tab:Toggle({
-    Title = "ESP",
-    Desc = "Highlight Players + Username + Distance",
-    Icon = "monitor",
+local ESPToggle = Tab:Toggle({
+    Title = "Full Box ESP",
+    Desc = "3D Box + Tracer + Name + Distance + HP",
+    Icon = "crosshair",
     Type = "Checkbox",
     Value = false,
     Callback = function(state)
-        Nebula.ESPEnabled = state
-        
+        getgenv().FullESP = state
         if state then
-            -- Create ESP for existing players
-            for _, plr in ipairs(game.Players:GetPlayers()) do
-                if plr ~= game.Players.LocalPlayer and plr.Character then
-                    task.spawn(function() createESP(plr) end)
-                end
-            end
-
-            -- Connections
-            Nebula.PlayerAddedConn = game.Players.PlayerAdded:Connect(function(plr)
-                plr.CharacterAdded:Connect(function()
-                    task.wait(1)
-                    if Nebula.ESPEnabled then createESP(plr) end
-                end)
-            end)
-
-            Nebula.PlayerRemovingConn = game.Players.PlayerRemoving:Connect(function(plr)
-                removeESP(plr)
-            end)
-
-            -- Heartbeat update distance
-            Nebula.HeartbeatConn = game:GetService("RunService").Heartbeat:Connect(function()
-                if not Nebula.ESPEnabled then return end
-                -- update distance logic sama kayak aslinya (ga perlu diubah)
-                local localHRP = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if not localHRP then return end
-
-                for plr, esp in pairs(Nebula.ESPObjects) do
-                    local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp and esp.DistanceLabel then
-                        local dist = math.floor((localHRP.Position - hrp.Position).Magnitude)
-                        esp.DistanceLabel.Text = dist .. " studs"
-                    end
-                end
-            end)
-
+            StartFullESP()
         else
-            -- Cleanup
-            if Nebula.HeartbeatConn then Nebula.HeartbeatConn:Disconnect() end
-            if Nebula.PlayerAddedConn then Nebula.PlayerAddedConn:Disconnect() end
-            if Nebula.PlayerRemovingConn then Nebula.PlayerRemovingConn:Disconnect() end
-
-            for plr, _ in pairs(Nebula.ESPObjects) do
-                removeESP(plr)
-            end
-            Nebula.ESPObjects = {}
+            ClearFullESP()
         end
     end
 })
 
--- Pastikan createESP & removeESP pake Nebula.ESPObjects
-local function createESP(plr)
-    if plr == game.Players.LocalPlayer or Nebula.ESPObjects[plr] or not Nebula.ESPEnabled then return end
-    -- ... (sama persis kayak kode lu, cuma ganti ESPObjects[plr] jadi Nebula.ESPObjects[plr])
-    Nebula.ESPObjects[plr] = { Highlight = highlight, BillboardGui = billboardGui, ... }
+local ESP = {}
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local cam = workspace.CurrentCamera
+
+-- Buat Drawing object per player
+local function AddPlayerESP(plr)
+    if plr == Players.LocalPlayer then return end
+    
+    ESP[plr] = {
+        Box = Drawing.new("Square"),
+        Tracer = Drawing.new("Line"),
+        Name = Drawing.new("Text"),
+        Distance = Drawing.new("Text"),
+        HealthBarOutline = Drawing.new("Square"),
+        HealthBar = Drawing.new("Square"),
+    }
+    
+    -- Setting box
+    local box = ESP[plr].Box
+    box.Thickness = 2
+    box.Filled = false
+    box.Color = Color3.fromRGB(255, 255, 255)
+    box.Transparency = 1
+    box.Visible = false
+    
+    -- Tracer dari bawah layar
+    local tracer = ESP[plr].Tracer
+    tracer.Thickness = 2
+    tracer.Color = Color3.fromRGB(255, 0, 255)
+    tracer.Transparency = 1
+    tracer.Visible = false
+    
+    -- Text nama + jarak
+    local name = ESP[plr].Name
+    name.Size = 16
+    name.Center = true
+    name.Outline = true
+    name.Font = 2
+    name.Color = Color3.fromRGB(255, 255, 255)
+    name.Visible = false
+    
+    local dist = ESP[plr].Distance
+    dist.Size = 14
+    dist.Center = true
+    dist.Outline = true
+    dist.Font = 2
+    dist.Color = Color3.fromRGB(0, 255, 255)
+    dist.Visible = false
+    
+    -- Health bar
+    local hbOutline = ESP[plr].HealthBarOutline
+    hbOutline.Thickness = 3
+    hbOutline.Filled = false
+    hbOutline.Color = Color3.new(0,0,0)
+    hbOutline.Visible = false
+    
+    local hb = ESP[plr].HealthBar
+    hb.Thickness = 1
+    hb.Filled = true
+    hb.Color = Color3.fromRGB(0, 255, 0)
+    hb.Visible = false
 end
 
-local function removeESP(plr)
-    local esp = Nebula.ESPObjects[plr]
-    if esp then
-        if esp.Highlight then esp.Highlight:Destroy() end
-        if esp.BillboardGui then esp.BillboardGui:Destroy() end
-        Nebula.ESPObjects[plr] = nil
+-- Update tiap frame
+local function UpdateESP()
+    if not getgenv().FullESP then return end
+    
+    for plr, drawings in pairs(ESP) do
+        local char = plr.Character
+        local hum = char and char:FindFirstChild("Humanoid")
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local head = char and char:FindFirstChild("Head")
+        
+        if char and hum and root and head and hum.Health > 0 then
+            local pos, onScreen = cam:WorldToViewportPoint(root.Position)
+            local headPos = cam:WorldToViewportPoint(head.Position + Vector3.new(0,0.5,0))
+            local legPos = cam:WorldToViewportPoint(root.Position - Vector3.new(0,3.5,0))
+            local dist = (root.Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+            
+            if onScreen then
+                -- Box 3D
+                local size = Vector2.new(1000 / pos.Z, 1600 / pos.Z) * 2
+                drawings.Box.Size = size
+                drawings.Box.Position = Vector2.new(pos.X - size.X/2, pos.Y - size.Y/2)
+                drawings.Box.Visible = true
+                
+                -- Tracer
+                drawings.Tracer.From = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y)
+                drawings.Tracer.To = Vector2.new(pos.X, pos.Y + size.Y/2)
+                drawings.Tracer.Visible = true
+                
+                -- Nama
+                drawings.Name.Text = plr.DisplayName
+                drawings.Name.Position = Vector2.new(pos.X, headPos.Y - 25)
+                drawings.Name.Visible = true
+                
+                -- Jarak
+                drawings.Distance.Text = math.floor(dist) .. " studs"
+                drawings.Distance.Position = Vector2.new(pos.X, headPos.Y - 5)
+                drawings.Distance.Visible = true
+                
+                -- Health bar
+                local healthPct = hum.Health / hum.MaxHealth
+                drawings.HealthBarOutline.Size = Vector2.new(4, size.Y + 4)
+                drawings.HealthBarOutline.Position = drawings.Box.Position - Vector2.new(6, -2)
+                drawings.HealthBarOutline.Visible = true
+                
+                drawings.HealthBar.Size = Vector2.new(4, size.Y * healthPct + 4)
+                drawings.HealthBar.Position = drawings.HealthBarOutline.Position + Vector2.new(0, size.Y*(1-healthPct))
+                drawings.HealthBar.Color = Color3.fromHSV(healthPct/3, 1, 1)
+                drawings.HealthBar.Visible = true
+                
+            else
+                for _, v in pairs(drawings) do
+                    v.Visible = false
+                end
+            end
+        else
+            for _, v in pairs(drawings) do
+                v.Visible = false
+            end
+        end
     end
+end
+
+-- Player masuk
+Players.PlayerAdded:Connect(function(plr)
+    if getgenv().FullESP then
+        plr.CharacterAdded:Wait()
+        task.wait(1)
+        AddPlayerESP(plr)
+    end
+end)
+
+-- Player keluar
+Players.PlayerRemoving:Connect(function(plr)
+    if ESP[plr] then
+        for _, drawing in pairs(ESP[plr]) do
+            drawing:Remove()
+        end
+        ESP[plr] = nil
+    end
+end)
+
+-- Start ESP
+function StartFullESP()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= Players.LocalPlayer and plr.Character then
+            AddPlayerESP(plr)
+        end
+    end
+    
+    RunService:BindToRenderStep("FullESPUpdate", Enum.RenderPriority.Camera.Value + 1, UpdateESP)
+end
+
+-- Clear semua
+function ClearFullESP()
+    RunService:UnbindFromRenderStep("FullESPUpdate")
+    for _, drawings in pairs(ESP) do
+        for _, drawing in pairs(drawings) do
+            drawing:Remove()
+        end
+    end
+    ESP = {}
 end
 
 local Lighting = game:GetService("Lighting")
 local oldBrightness = Lighting.Brightness
-local oldClockTime = Lighting.ClockTime
+local oldClockTime = Lighting.ClockTime 
 local oldFogEnd = Lighting.FogEnd
 local oldGlobalShadows = Lighting.GlobalShadows
 local oldAmbient = Lighting.Ambient
@@ -537,136 +600,194 @@ local Toggle = Tab:Toggle({
     end
 })
 
-local Input = Tab:Input({
-    Title = "Teleport To Player (NOT SAVE)",
-    Desc = "TP TO PLAYER BY USERNAME",
-    Value = "",
-    InputIcon = "user",
-    Placeholder = "ENTER USERNAME",
-    Type = "Input",
-    Callback = function(name)
-        if not name or name == "" then
+--====================================================--
+--============   TELEPORT TO PLAYER DROPDOWN  =========--
+--====================================================--
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Ambil daftar player selain kita
+local function GetPlayerList()
+    local list = {}
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            table.insert(list, plr.Name)
+        end
+    end
+    return list
+end
+
+-- Create Dropdown
+local TpDropdown = Tab:Dropdown({
+    Title = "Teleport To Player",
+    Desc = "Select player to teleport|use this if game have low anti cheat",
+    Values = GetPlayerList(),
+    Default = nil, -- tidak pre-select
+    Multi = false,
+    AllowNone = false,
+    Callback = function(selectedName)
+        if not selectedName then
             WindUI:Notify({
                 Title = "Error",
-                Content = "nama player ksong",
-                Duration = 4
+                Content = "No player selected!",
+                Duration = 3,
+                Icon = "alert-triangle"
             })
             return
         end
 
-        local LocalPlayer = game.Players.LocalPlayer
         local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
         local HRP = Character:WaitForChild("HumanoidRootPart")
 
-        for _, plr in pairs(game.Players:GetPlayers()) do
-            if plr ~= LocalPlayer then
-                local plrName = plr.Name:lower()
-                local dispName = plr.DisplayName:lower()
-                local input = name:lower()
+        local target = Players:FindFirstChild(selectedName)
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            local tHRP = target.Character.HumanoidRootPart
 
-                -- Support partial name & DisplayName
-                if plrName:find(input) or dispName:find(input) then
-                    local targetHRP = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-                    if targetHRP then
-                        -- BYPASS METHOD (anti-teleport detection)
-                        HRP.CFrame = targetHRP.CFrame * CFrame.new(0, 5, 0) -- sedikit di atas biar ga stuck
-                        
-                        WindUI:Notify({
-                            Title = "Teleported!",
-                            Content = "Kamu pindah ke: " .. plr.DisplayName .. " (" .. plr.Name .. ")",
-                            Duration = 5,
-                            Icon = "zap"
-                        })
-                        return
-                    end
-                end
-            end
+            -- anti stuck teleport
+            HRP.CFrame = tHRP.CFrame * CFrame.new(0, 5, 0)
+
+            WindUI:Notify({
+                Title = "Teleported!",
+                Content = "You teleported to: " .. target.Name,
+                Duration = 4,
+                Icon = "zap"
+            })
+        else
+            WindUI:Notify({
+                Title = "Failed",
+                Content = "Target player invalid or no character.",
+                Duration = 4,
+                Icon = "x"
+            })
         end
-
-        -- Kalau ga ketemu
-        WindUI:Notify({
-            Title = "Not Found",
-            Content = "Player '" .. name .. "' ga ketemu di server ini",
-            Duration = 5
-        })
     end
 })
 
-local Input = Tab:Input({
-    Title = "Teleport To Player (SAFE TWEEN)",
-    Desc = "TP ke player pake tween = SUPER AMAN dari ban",
-    Value = "",
-    InputIcon = "user-plus",
-    Placeholder = "Masukin username/displayname",
-    Type = "Input",
-    Callback = function(name)
-        if not name or name == "" then
-            WindUI:Notify({Title = "Error", Content = "Masukin nama dulu bro!", Duration = 4})
+--====================================================--
+--============   AUTO REFRESH PLAYER LIST  ===========--
+--====================================================--
+
+-- Refresh dropdown saat ada player join
+Players.PlayerAdded:Connect(function()
+    TpDropdown:SetValues(GetPlayerList())
+end)
+
+-- Refresh dropdown saat ada player keluar
+Players.PlayerRemoving:Connect(function()
+    TpDropdown:SetValues(GetPlayerList())
+end)
+
+--====================================================--
+--==============  TWEEN TO PLAYER DROPDOWN  ===========--
+--====================================================--
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Ambil daftar player kecuali kita
+local function GetPlayerList()
+    local list = {}
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            table.insert(list, plr.Name)
+        end
+    end
+    return list
+end
+
+-- CREATE DROPDOWN
+local TweenDropdown = Tab:Dropdown({
+    Title = "Tween To Player",
+    Desc = "Move smoothly to selected player | SAVE VERSION",
+    Values = GetPlayerList(),
+    Default = nil,
+    Multi = false,
+    AllowNone = false,
+    Callback = function(selectedName)
+
+        if not selectedName then
+            WindUI:Notify({
+                Title = "Error",
+                Content = "No player selected!",
+                Duration = 3,
+                Icon = "x"
+            })
             return
         end
 
-        local LocalPlayer = game.Players.LocalPlayer
-        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local HRP = Character:WaitForChild("HumanoidRootPart")
-        local TweenService = game:GetService("TweenService")
+        -- CARI TARGET PLAYER
+        local targetPlayer = Players:FindFirstChild(selectedName)
+        if not targetPlayer 
+        or not targetPlayer.Character 
+        or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
 
-        for _, plr in pairs(game.Players:GetPlayers()) do
-            if plr ~= LocalPlayer then
-                local plrName = plr.Name:lower()
-                local dispName = plr.DisplayName:lower()
-                local input = name:lower()
-
-                if plrName:find(input) or dispName:find(input) then
-                    local targetChar = plr.Character
-                    if targetChar then
-                        local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-                        if targetHRP then
-                            -- Random offset biar ga pas banget (anti-detection)
-                            local offset = Vector3.new(
-                                math.random(-3, 3),
-                                math.random(4, 7),   -- sedikit di atas
-                                math.random(-3, 3)
-                            )
-
-                            local targetCFrame = targetHRP.CFrame * CFrame.new(offset)
-
-                            -- Tween super smooth + natural
-                            local tweenInfo = TweenInfo.new(
-                                math.random(65, 90)/100,   -- 0.65–0.90 detik (acak biar ga pattern)
-                                Enum.EasingStyle.Quint,
-                                Enum.EasingDirection.Out,
-                                0,
-                                false,
-                                0
-                            )
-
-                            local tween = TweenService:Create(HRP, tweenInfo, {CFrame = targetCFrame})
-                            tween:Play()
-
-                            -- Notif setelah selesai (optional)
-                            tween.Completed:Connect(function()
-                                WindUI:Notify({
-                                    Title = "Teleported Smooth",
-                                    Content = "Nyampe ke " .. plr.DisplayName .. " tanpa ketahuan",
-                                    Duration = 5,
-                                    Icon = "zap"
-                                })
-                            end)
-
-                            return
-                        end
-                    end
-                end
-            end
+            WindUI:Notify({
+                Title = "Player Not Found",
+                Content = "Player belum spawn atau invalid",
+                Duration = 4,
+                Icon = "x"
+            })
+            return
         end
 
-        WindUI:Notify({
-            Title = "Ga Ketemu",
-            Content = "Player '"..name.."' ga ada di server ini",
-            Duration = 5
-        })
+        local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+        if not myRoot then return end
+
+        local targetHRP = targetPlayer.Character.HumanoidRootPart
+
+        -- posisi aman 5 stud di atas
+        local targetPos = targetHRP.Position + Vector3.new(0, 5, 0)
+        local distance = (myRoot.Position - targetPos).Magnitude
+
+        -- SEMAKIN JAUH → tween time otomatis naik
+        local tweenTime = distance / 120
+
+        local tweenInfo = TweenInfo.new(
+            tweenTime,
+            Enum.EasingStyle.Linear,
+            Enum.EasingDirection.Out
+        )
+
+        local tween = TweenService:Create(
+            myRoot,
+            tweenInfo,
+            { CFrame = CFrame.new(targetPos) }
+        )
+
+        -- anti jatuh / anti glitch
+        myRoot.Anchored = true
+        tween:Play()
+
+        tween.Completed:Connect(function()
+            myRoot.Anchored = false
+            myRoot.CFrame = CFrame.new(targetPos)
+
+            WindUI:Notify({
+                Title = "Arrived!",
+                Content = "Smooth tween to: " .. targetPlayer.DisplayName,
+                Duration = 4,
+                Icon = "zap"
+            })
+        end)
     end
 })
+
+--====================================================--
+--==============  AUTO REFRESH PLAYER LIST  ===========--
+--====================================================--
+
+Players.PlayerAdded:Connect(function()
+    TweenDropdown:SetValues(GetPlayerList())
+end)
+
+Players.PlayerRemoving:Connect(function()
+    TweenDropdown:SetValues(GetPlayerList())
+end)
+
 
 local Button = Tab:Button({
     Title = "PSHADE | SHADERS",
@@ -1784,6 +1905,72 @@ local Input = Tab:Input({
     end
 })
 
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local Button = Tab:Button({
+    Title = "Serverhop | Low Player",
+    Desc = "JOINING SERVER WITH LOW PLAYER COUNT",
+    Locked = false,
+    Callback = function()
+
+        WindUI:Notify({
+            Title = "Serverhop",
+            Content = "Mengambil daftar server...",
+            Duration = 3,
+            Icon = "loader"
+        })
+
+        local placeId = game.PlaceId
+        local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100"
+
+        local success, result = pcall(function()
+            return HttpService:JSONDecode(game:HttpGet(url))
+        end)
+
+        if not success then
+            WindUI:Notify({
+                Title = "Serverhop Error",
+                Content = "Gagal mengambil data server!",
+                Duration = 3,
+                Icon = "alert-triangle"
+            })
+            return
+        end
+
+        local lowestServer = nil
+        local lowestPlayers = math.huge
+
+        for _, server in ipairs(result.data) do
+            if server.playing < lowestPlayers and server.id ~= game.JobId then
+                lowestPlayers = server.playing
+                lowestServer = server.id
+            end
+        end
+
+        if lowestServer then
+            WindUI:Notify({
+                Title = "Serverhop",
+                Content = "Server ditemukan! Player: "..lowestPlayers.." — Joining...",
+                Duration = 3,
+                Icon = "check"
+            })
+
+            TeleportService:TeleportToPlaceInstance(placeId, lowestServer, LocalPlayer)
+        else
+            WindUI:Notify({
+                Title = "Serverhop",
+                Content = "Tidak menemukan server lain!",
+                Duration = 3,
+                Icon = "x"
+            })
+        end
+    end
+})
+
+
 WindUI:Notify({
     Title = "nebulawarex SCRIPT HAS LOADED!",
     Content = "beta version do not share",
@@ -1869,5 +2056,126 @@ if getgenv().NebulaWareX_Loaded then
     return
 else
     getgenv().NebulaWareX_Loaded = true
-
 end
+
+
+
+
+--====================================================--
+--===============     THEME DEFINITIONS    ===========--
+--====================================================--
+
+-- 1. Frutiger Aero
+WindUI:AddTheme({
+    Name = "FrutigerAero",
+    Accent      = Color3.fromHex("#22e3ff"), 
+    Background  = Color3.fromHex("#d9faff"),
+    Outline     = Color3.fromHex("#0ba5c9"),
+    Text        = Color3.fromHex("#003344"),
+    Placeholder = Color3.fromHex("#7dd8e6"),
+    Button      = Color3.fromHex("#57e3ff"),
+    Icon        = Color3.fromHex("#0ea5c6"),
+})
+
+-- 2. Matrix Green
+WindUI:AddTheme({
+    Name = "MatrixGreen",
+    Accent      = Color3.fromHex("#00ff41"),
+    Background  = Color3.fromHex("#000000"),
+    Outline     = Color3.fromHex("#005f22"),
+    Text        = Color3.fromHex("#00ff41"),
+    Placeholder = Color3.fromHex("#39ff88"),
+    Button      = Color3.fromHex("#007f2a"),
+    Icon        = Color3.fromHex("#00ff41"),
+})
+
+-- 3. Cyberpunk Neon
+WindUI:AddTheme({
+    Name = "CyberpunkNeon",
+    Accent      = Color3.fromHex("#f72585"),
+    Background  = Color3.fromHex("#1a0033"),
+    Outline     = Color3.fromHex("#ffbe0b"),
+    Text        = Color3.fromHex("#ffd6fe"),
+    Placeholder = Color3.fromHex("#ff8fab"),
+    Button      = Color3.fromHex("#ffbe0b"),
+    Icon        = Color3.fromHex("#f72585"),
+})
+
+-- 4. Ice Blue
+WindUI:AddTheme({
+    Name = "IceBlue",
+    Accent      = Color3.fromHex("#8ecaff"),
+    Background  = Color3.fromHex("#e8f7ff"),
+    Outline     = Color3.fromHex("#7bb7dd"),
+    Text        = Color3.fromHex("#00344e"),
+    Placeholder = Color3.fromHex("#a7d4f7"),
+    Button      = Color3.fromHex("#bde6ff"),
+    Icon        = Color3.fromHex("#61b8ff"),
+})
+
+-- 5. Midnight Purple
+WindUI:AddTheme({
+    Name = "MidnightPurple",
+    Accent      = Color3.fromHex("#a855f7"),
+    Background  = Color3.fromHex("#1a1029"),
+    Outline     = Color3.fromHex("#6b21a8"),
+    Text        = Color3.fromHex("#e9d5ff"),
+    Placeholder = Color3.fromHex("#c084fc"),
+    Button      = Color3.fromHex("#7c3aed"),
+    Icon        = Color3.fromHex("#c084fc"),
+})
+
+-- 6. Pastel Soft Pink
+WindUI:AddTheme({
+    Name = "SoftPink",
+    Accent      = Color3.fromHex("#ffafcc"),
+    Background  = Color3.fromHex("#ffe5f0"),
+    Outline     = Color3.fromHex("#f4b6d6"),
+    Text        = Color3.fromHex("#5c2b3b"),
+    Placeholder = Color3.fromHex("#f7cfe3"),
+    Button      = Color3.fromHex("#ffcade"),
+    Icon        = Color3.fromHex("#ff8fbf"),
+})
+
+--====================================================--
+--===============      DEFAULT THEME      ============--
+--====================================================--
+
+-- UBAH DI SINI JIKA MAU DEFAULT THEME LAIN
+
+
+--====================================================--
+--===============      WINDOW SETUP       ============--
+--====================================================--
+
+
+
+--====================================================--
+--================   THEME DROPDOWN     ==============--
+--====================================================--
+
+local themeList = {
+    "FrutigerAero",
+    "MatrixGreen",
+    "CyberpunkNeon",
+    "IceBlue",
+    "MidnightPurple",
+    "SoftPink"
+}
+
+Tab:Dropdown({
+    Title = "Select Theme",
+    Desc = "Choose UI Theme",
+    Values = themeList,
+    Default = "FrutigerAero",
+    Multi = false,
+    Callback = function(theme)
+        WindUI:SetTheme(theme)
+        WindUI:Notify({
+            Title = "Theme Applied",
+            Content = "Theme changed to: " .. theme,
+            Duration = 3,
+            Icon = "palette",
+        })
+    end
+})
